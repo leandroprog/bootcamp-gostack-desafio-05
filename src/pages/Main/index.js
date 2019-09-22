@@ -7,13 +7,14 @@ import api from '../../services/api';
 import Container from '../../components/Container';
 import { Form, SubmitButton, List } from './styles';
 
-// eslint-disable-next-line react/prefer-stateless-function
+
 export default class Main extends Component {
-  // eslint-disable-next-line react/state-in-constructor
+
   state = {
     newRepo: '',
     repositories: [],
     loading: false,
+    error: false
   };
 
   // Carregar os dados do localStorage
@@ -39,32 +40,53 @@ export default class Main extends Component {
   handleSubmit = async e => {
     e.preventDefault();
 
-    this.setState({ loading: true });
 
-    const { newRepo, repositories } = this.state;
+    try {
 
-    const response = await api.get(`/repos/${newRepo}`);
+      this.setState({ loading: true,  error: false });
 
-    const data = {
-      name: response.data.full_name,
-    };
+      const { newRepo, repositories } = this.state;
 
-    this.setState({
-      repositories: [...repositories, data],
-      newRepo: '',
-      loading: false,
-    });
+      if(!newRepo) throw new Error('Campo Adicionar repositório é obrigatório');
+
+
+      const repository = repositories.find( repo => repo.name === newRepo);
+
+      if(repository) throw new Error('Repositório duplicado');
+
+      console.log(repositories);
+
+      const response = await api.get(`/repos/${newRepo}`);
+
+      const data = {
+        name: response.data.full_name,
+      };
+
+      this.setState({
+        repositories: [...repositories, data],
+        newRepo: ''
+      });
+    } catch (error) {
+      this.setState({
+        error: true
+      });
+    } finally {
+      this.setState({
+        loading: false,
+      });
+    }
+
   };
 
   render() {
-    const { newRepo, loading, repositories } = this.state;
+    const { newRepo, loading, repositories, error } = this.state;
     return (
       <Container>
         <h1>
           <FaGithubAlt />
           Repositórios
         </h1>
-        <Form onSubmit={this.handleSubmit}>
+        <Form onSubmit={this.handleSubmit} error={error}>
           <input
             type="text"
             placeholder="Adicionar repositório"
@@ -82,8 +104,8 @@ export default class Main extends Component {
         </Form>
 
         <List>
-          {repositories.map(repo => (
-            <li key={repo.name}>
+          {repositories.map((repo, index) => (
+            <li key={index}>
               <span>{repo.name}</span>
               <Link to={`/repository/${encodeURIComponent(repo.name)}`}>
                 Detalhes
